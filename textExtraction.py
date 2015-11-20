@@ -3,78 +3,60 @@ Created on 19.11.2015
 
 @author: nils witt
 '''
-import Queue
-import threading
-import multiprocessing
+import multiprocessing as mp
 import os
 import pdf2text
 import logging
 
 logging.getLogger().setLevel(logging.INFO)
-numThreads = multiprocessing.cpu_count()
-threadList = []
-for i in range(numThreads):
-    threadList.append("Thread-" + str(i))
-workingDir = "files"    
-queueLock = threading.Lock()
-threads = []
-threadID = 1
+numProcesses = mp.cpu_count()
+processList = []
+for i in range(numProcesses):
+    processList.append(("Process-" + str(i), i))
+workingDir = "files"
+processes = []
 
-class myThread (threading.Thread):
-    def __init__(self, name, q, wd):
-        threading.Thread.__init__(self)
-        self.name = name
-        self.q = q
-        self.wd = wd
-
-    def run(self):
-        print("Starting " + self.name)
-        process_data(self.q, self.wd)
-        print("Exiting " + self.name)
-
-def process_data(q, wd):
-        while not q.empty():
+def process_data(pName, l, wd):
+        print "Starting " + pName 
+        i = 0
+        for filename in l:
             try:
-                queueLock.acquire()
-                filename = q.get()
-                queueLock.release()
-                plaintext = pdf2text.convert_pdf_to_txt(wd + os.sep + filename)
                 plainFilename = filename + ".txt" 
                 if not os.path.exists(wd + os.sep + plainFilename):
+                    plaintext = pdf2text.convert_pdf_to_txt(wd + os.sep + filename)
                     fd = open(wd + os.sep + plainFilename, "w+")
                     fd.write(plaintext)
-                    logging.info(plainFilename + " written")
+                    logging.info("[" + pName + "] " + plainFilename + " written. " + str((float(i)/len(l))*100) + "% complete.")
+                else:
+                    logging.info("Failed to write " + plainFilename + ". File already exists.")
             except Exception as e:
-                logging.info("I/O error({0}): {1}".format(e.errno, e.strerror))
+                logging.warn(str(e))
                 continue
+            i += 1
 
-def fillQueue(path):
+def fillLists(path, numChunks):
     if os.path.exists(path):
         docs = os.listdir(path)
-        q = Queue.Queue()
-        queueLock.acquire()
+        l = []
+        lol = []
         for doc in docs:
-            q.put(doc)
-        queueLock.release()
-        return q
+            l.append(doc) 
+        for i in range(numChunks):
+            lol.append(l[i::numChunks])
+        
+        return lol
     else:
         raise Exception("path was not a valid path")
 
-
 if __name__ == "__main__":
     
-    q = fillQueue("files")
+    l = fillLists(workingDir, numProcesses)
     # Create new threads
-    for tName in threadList:
-        thread = myThread(tName, q, workingDir)
-        thread.start()
-        threads.append(thread)
-
-    # Wait for queue to empty
-    #while not q.empty():
-    #    pass
-
-    # Wait for all threads to complete
-    for t in threads:
-        t.join()
-    print("Exiting Main Thread")
+    for process in processList:
+        arguments = (process[0], l[process[1]], workingDir)
+        p = mp.Process(target=process_data, args=arguments)
+        p.start()
+        processes.append(p)
+    
+    for p in processes:
+        p.join()
