@@ -5,26 +5,28 @@ Created on 19.11.2015
 '''
 import multiprocessing as mp
 import os
-import pdf2text
+from pdfTools import pdf2text
 import logging
 
 logging.getLogger().setLevel(logging.INFO)
 numProcesses = mp.cpu_count()
 processList = []
-for i in range(numProcesses):
+#for i in range(numProcesses/2):
+for i in range(1):
     processList.append(("Process-" + str(i), i))
-workingDir = "files"
+workingDir = "data/files"
+outputDir = "data/txts"
 processes = []
 
-def process_data(pName, l, wd):
+def process_data(pName, l, wd, od):
         print "Starting " + pName 
         i = 0
         for filename in l:
             try:
                 plainFilename = filename + ".txt" 
-                if not os.path.exists(wd + os.sep + plainFilename):
+                if not os.path.exists(od + os.sep + plainFilename):
                     plaintext = pdf2text.convert_pdf_to_txt(wd + os.sep + filename)
-                    fd = open(wd + os.sep + plainFilename, "w+")
+                    fd = open(od + os.sep + plainFilename, "w+")
                     fd.write(plaintext)
                     logging.info("[" + pName + "] " + plainFilename + " written. " + str((float(i)/len(l))*100) + "% complete.")
                 else:
@@ -53,7 +55,7 @@ if __name__ == "__main__":
     l = fillLists(workingDir, numProcesses)
     # Create new threads
     for process in processList:
-        arguments = (process[0], l[process[1]], workingDir)
+        arguments = (process[0], l[process[1]], workingDir, outputDir)
         p = mp.Process(target=process_data, args=arguments)
         p.start()
         processes.append(p)

@@ -1,6 +1,5 @@
-files
+data
 *.pyc
 *.swp
 *.project
 *.pydevproject
-filesBackup
