@@ -4,7 +4,7 @@ Created on 23.11.2015
 @author: user
 '''
 import os
-from pdfTools import pdf2txt
+from pdfTools import researchPaper
 import random
 import datetime
 import math
@@ -19,7 +19,7 @@ for i in range(10):
     print sampleDoc
     for j in range(10):
         try:
-            print "   " + str(j) + "th page length -> " + str(len(pdf2txt.pdf_to_txt(wd + os.sep + sampleDoc, j, j)))
+            print "   " + str(j) + "th page length -> " + str(len(researchPaper.pdf_to_txt(wd + os.sep + sampleDoc, j, j)))
         except Exception as e:
             print "error"
             pass

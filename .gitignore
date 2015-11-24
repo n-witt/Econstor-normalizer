@@ -3,3 +3,4 @@ data
 *.swp
 *.project
 *.pydevproject
+*__init__.py
