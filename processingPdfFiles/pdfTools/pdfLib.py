@@ -51,5 +51,4 @@ class PdfLib:
         device.close()
         s = retstr.getvalue()
         retstr.close()
-        #return s.decode('utf-8')
-        return s
+        return s.decode('utf-8')

@@ -6,7 +6,17 @@ Created on 19.11.2015
 import multiprocessing as mp
 import os
 import logging
-import processingPdfFiles
+from processingPdfFiles.processingPdFiles import ProcessWorker
+
+def errorHandler(q, f):
+    while True:
+        msg = q.get()
+        if msg == "terminate!":
+            break
+        fd = open(f, "a")
+        es = unicode(msg[0]) + u": " + unicode(msg[1]) + u"\n"
+        fd.write(es.encode("utf8"))
+        fd.close()
 
 def fillLists(path, numChunks):
     if os.path.exists(path):
@@ -28,23 +38,32 @@ if __name__ == "__main__":
     numProcesses = mp.cpu_count()
     workingDir = u"../data/pdf"
     outputDir = u"../data/txts"
+    errorOutputFile = u"../data/brokenPDFs"
     processes = []
     processList = []
+    errorQueue = mp.Queue()
 
     # craft process's meta data
-    #for i in range(numProcesses/2):
-    for i in range(1):
+    for i in range(numProcesses):
+    #for i in range(1):
         processList.append(("Process-" + str(i), i))
 
     # create numProcesses lists of file names from workingDir 
     l = fillLists(workingDir, numProcesses)
+
+    # start errorHandling process    
+    ep = mp.Process(target=errorHandler, args=(errorQueue, errorOutputFile))
+    ep.start()
     
-    # Create new processes
+    # Create worker processes
     for process in processList:
-        pw = processingPdfFiles.ProcessWorker(process[0], l[process[1]], workingDir, outputDir, logging)
+        pw = ProcessWorker(process[0], l[process[1]], workingDir, outputDir, logging, errorQueue)
         p = mp.Process(target=pw.process_data, args=())
         p.start()
         processes.append(p)
+
     
     for p in processes:
         p.join()
+    
+    errorQueue.put("terminate!")
