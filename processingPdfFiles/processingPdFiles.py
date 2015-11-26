@@ -41,23 +41,26 @@ class ProcessWorker():
                     
                     # normalize text
                     f = Filter(plaintext)
-                    plaintext = f.remOneCharPerLine() \
+                    plaintext = f.normalizeCaracters() \
+                        .remOneCharPerLine() \
                         .filterCharacters() \
                         .multipleSpaces() \
                         .multipleDots() \
                         .listEnum() \
-                        .normalizeCaracters() \
-                        .getResult() \
+                        .getResult()
                     
-                    fd = open(self.od + os.sep + lang + u"_" + plainFilename, "w")
-                    fd.write(plaintext.encode("utf-8"))
-                    fd.close()
-                    
-                    self.logger.info(u"[{}]   {} written.".format(self.pName, plainFilename))
+                    # experience shows, that less than 6000 characters is mostly waste
+                    if plaintext.__len__() > 6000:
+                        fd = open(self.od + os.sep + lang + u"_" + plainFilename, "w")
+                        fd.write(plaintext.encode("utf-8"))
+                        fd.close()
+                        self.logger.info(u"[{}]   {} written.".format(self.pName, plainFilename))
+                    else:
+                        raise Exception(u"{} was not written. Document is too short.".format(plainFilename))
                 else:
                     self.logger.info(u"[{}]    Failed to write {}. File already exists.".format(self.pName, plainFilename))
             except Exception as e:
-                self.logger.warn(str(e))
+                self.logger.warn(unicode(e))
                 self.eq.put((filename, e))
                 continue
             stop = time.time()

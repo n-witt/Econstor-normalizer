@@ -12,11 +12,15 @@ class Filter():
             fd.close()
         else:
             self.s = s
-    
+            
     def normalizeCaracters(self):
-        self.s = unicodedata.normalize("NFKD", self.s).encode("ascii", "ignore")
+        """
+        converts "über" to "uber" 
+        """
+        self.s = unicodedata.normalize("NFKD", self.s).encode("ascii", "ignore").decode("utf8")
         return self
     
+   
     def remOneCharPerLine(self):
         """
         transforms "\nF\n\O\nO" to "FOO".
@@ -36,7 +40,7 @@ class Filter():
     
     def listEnum(self):
         """
-        s.a. 2.1.3
+        removes list enumarations s.a. "2.1.3 topic x"
         """
         re.sub(r'([0-9]*\.[0-9]*)', '', self.s)
         return self
@@ -56,6 +60,6 @@ class Filter():
         return self.s
 
 if __name__ == "__main__":
-    f = Filter("../data/examples/fi_487848446.pdf.txt")
-    res = f.remOneCharPerLine().filterCharacters().multipleSpaces().multipleDots().listEnum().normalizeCaracters().getResult()
+    f = Filter(u"../data/txts/de_726720712.pdf.txt")
+    res = f.normalizeCaracters().remOneCharPerLine().filterCharacters().multipleSpaces().multipleDots().listEnum().getResult()
     
