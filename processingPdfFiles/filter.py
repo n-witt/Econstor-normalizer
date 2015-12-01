@@ -14,9 +14,9 @@ class Filter():
             self.s = s
             
     def normalizeCaracters(self):
-        """
-        converts "über" to "uber" 
-        """
+        '''
+        converts 'ueber' to 'uber'
+        ''' 
         self.s = unicodedata.normalize("NFKD", self.s).encode("ascii", "ignore").decode("utf8")
         return self
     

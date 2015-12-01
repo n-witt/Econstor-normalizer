@@ -44,8 +44,8 @@ if __name__ == "__main__":
     errorQueue = mp.Queue()
 
     # craft process's meta data
-    for i in range(numProcesses):
-    #for i in range(1):
+    #for i in range(numProcesses/2):
+    for i in range(1):
         processList.append(("Process-" + str(i), i))
 
     # create numProcesses lists of file names from workingDir 

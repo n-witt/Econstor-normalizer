@@ -51,7 +51,8 @@ class ProcessWorker():
                     
                     # experience shows, that less than 6000 characters is mostly waste
                     if plaintext.__len__() > 6000:
-                        fd = open(self.od + os.sep + lang + u"_" + plainFilename, "w")
+                        #fd = open(self.od + os.sep + lang + u"_" + plainFilename, "w")
+                        fd = open(self.od + os.sep + plainFilename, "w")
                         fd.write(plaintext.encode("utf-8"))
                         fd.close()
                         self.logger.info(u"[{}]   {} written.".format(self.pName, plainFilename))
