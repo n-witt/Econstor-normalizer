@@ -3,19 +3,17 @@ import os
 from processingPdfFiles.pdfTools.pdfLib import PdfLib
 import langdetect
 from  processingPdfFiles.filter import Filter
+import json
 
 class ProcessWorker():
-    def __init__(self, pName, l, wd, od, logger, eq):
+    def __init__(self, filename, wd, od, logger, eq):
         """
-        pName -> process name
-        l     -> list of filenames
         wd    -> working dir
         od    -> output dir
         er    -> error queue
         """
         self.logger = logger
-        self.pName = pName
-        self.l = l
+        self.filename = filename
         self.wd = wd
         self.od = od
         self.eq = eq
@@ -24,49 +22,47 @@ class ProcessWorker():
         """
         This method is the entry point for the worker processes
         """
-        self.logger.info(u"Starting " + self.pName) 
         i = 0
-        for filename in self.l:
-            self.logger.info(u"[{}] start processing {}.".format(self.pName, filename))
-            start = time.time()
-            try:
-                plainFilename = filename + u".txt" 
-                if not os.path.exists(self.od + os.sep + plainFilename):
-                    # extract plaintext from pdf
-                    paper = PdfLib(self.wd + os.sep + filename)
-                    textBeginning = self.__guessDocBegining(filename)
-                    plaintext = paper.pdf2txt(textBeginning, "max")
-                     
-                    lang = self.__guessLang(plaintext)
-                    
-                    # normalize text
-                    f = Filter(plaintext)
-                    plaintext = f.normalizeCaracters() \
-                        .remOneCharPerLine() \
-                        .filterCharacters() \
-                        .multipleSpaces() \
-                        .multipleDots() \
-                        .listEnum() \
-                        .getResult()
-                    
-                    # experience shows, that less than 6000 characters is mostly waste
-                    if plaintext.__len__() > 6000:
-                        #fd = open(self.od + os.sep + lang + u"_" + plainFilename, "w")
-                        fd = open(self.od + os.sep + plainFilename, "w")
-                        fd.write(plaintext.encode("utf-8"))
-                        fd.close()
-                        self.logger.info(u"[{}]   {} written.".format(self.pName, plainFilename))
-                    else:
-                        raise Exception(u"{} was not written. Document is too short.".format(plainFilename))
+        self.logger.info(u"start processing {}.".format(self.filename))
+        start = time.time()
+        try:
+            outFilename = self.filename + u".json" 
+            if not os.path.exists(self.od + os.sep + outFilename):
+                # extract plaintext from pdf
+                paper = PdfLib(self.wd + os.sep + self.filename)
+                textBeginning = self.__guessDocBegining(self.filename)
+                plaintext = paper.pdf2txt(textBeginning, "max")
+                
+                # normalize text
+                f = Filter(plaintext)
+                plaintext = f.normalizeCaracters() \
+                    .remOneCharPerLine() \
+                    .filterCharacters() \
+                    .multipleSpaces() \
+                    .multipleDots() \
+                    .listEnum() \
+                    .getResult()
+                
+                # experience shows, that less than 6000 characters is mostly waste
+                if plaintext.__len__() > 6000:
+                    result = {}
+                    result["lang"] = self.__guessLang(plaintext)
+                    result["plaintext"] = plaintext
+                    result["filename"] = self.filename
+                    fd = open(self.od + os.sep + outFilename, "w")
+                    fd.write(json.dumps(result).encode("utf8"))
+                    fd.close()
+                    self.logger.info(u"{} written.".format(outFilename))
                 else:
-                    self.logger.info(u"[{}]    Failed to write {}. File already exists.".format(self.pName, plainFilename))
-            except Exception as e:
-                self.logger.warn(unicode(e))
-                self.eq.put((filename, e))
-                continue
-            stop = time.time()
-            self.logger.info(u"[{}]   {:.2f} % complete. Took {:.2f}s.".format(self.pName, (float(i)/len(self.l))*100, stop-start))
-            i += 1
+                    raise Exception(u"{} was not written. Document is too short.".format(outFilename))
+            else:
+                self.logger.info(u"Failed to write {}. File already exists.".format(outFilename))
+        except Exception as e:
+            self.logger.warn(unicode(e))
+            self.eq.put((self.filename, e))
+        stop = time.time()
+        self.logger.info(u"Took {:.2f}s.".format(stop-start))
+        i += 1
             
     def __guessDocBegining(self, filename):
         if os.path.exists(self.wd + os.sep + filename):

@@ -7,6 +7,8 @@ import multiprocessing as mp
 import os
 import logging
 from processingPdfFiles.processingPdFiles import ProcessWorker
+import time
+from _socket import timeout
 
 def errorHandler(q, f):
     while True:
@@ -40,29 +42,45 @@ if __name__ == "__main__":
     outputDir = u"../data/txts"
     errorOutputFile = u"../data/brokenPDFs"
     processes = []
-    processList = []
     errorQueue = mp.Queue()
+    filenames = []
+    # the time in seconds before a worker thread is being killed
+    timeout = 600.0
 
-    # craft process's meta data
-    #for i in range(numProcesses/2):
-    for i in range(1):
-        processList.append(("Process-" + str(i), i))
-
-    # create numProcesses lists of file names from workingDir 
-    l = fillLists(workingDir, numProcesses)
+    # create list of all files in `workingDir`
+    if os.path.exists(workingDir):
+        docs = os.listdir(workingDir)
+        for doc in docs:
+            filenames.append(doc) 
+    else:
+        raise Exception("path was not a valid path")
 
     # start errorHandling process    
     ep = mp.Process(target=errorHandler, args=(errorQueue, errorOutputFile))
     ep.start()
     
-    # Create worker processes
-    for process in processList:
-        pw = ProcessWorker(process[0], l[process[1]], workingDir, outputDir, logging, errorQueue)
-        p = mp.Process(target=pw.process_data, args=())
-        p.start()
-        processes.append(p)
-
-    
+    numFiles = filenames.__len__()
+    while filenames.__len__() > 0:
+        if processes.__len__() <= numProcesses:
+            filename = filenames.pop()
+            pw = ProcessWorker(filename, workingDir, outputDir, logging, errorQueue)
+            p = mp.Process(target=pw.process_data, args=())
+            p.start()
+            processes.append((p, time.time(), filename))
+        else:
+            time.sleep(1)
+            for process in processes:
+                if process[0].is_alive():
+                    now = time.time()
+                    if now - process[1] > timeout:
+                        process[0].terminate()
+                        processes.remove(process)
+                        errString = u'{} ran into timeout'.format(process[2])
+                        logging.info(errString)
+                        errorQueue.put((process[2], Exception(errString)))
+                else:
+                    processes.remove(process)
+        logging.info(u'{:.2f}% completed'.format((1 - (filenames.__len__()/float(numFiles)))*100))
     for p in processes:
         p.join()
     
