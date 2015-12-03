@@ -33,6 +33,14 @@ def fillLists(path, numChunks):
         return lol
     else:
         raise Exception("path was not a valid path")
+    
+def isBrokenFile(filename, brokenFilesFile):
+    if not os.path.exists(brokenFilesFile):
+        return False
+    else:
+        with open(brokenFilesFile, u'r') as f:
+            return f.read().find(filename) > -1 
+    
 
 if __name__ == "__main__":
     
@@ -41,6 +49,7 @@ if __name__ == "__main__":
     workingDir = u"../data/pdf"
     outputDir = u"../data/txts"
     errorOutputFile = u"../data/brokenPDFs"
+    fileExtension = u'.json'
     processes = []
     errorQueue = mp.Queue()
     filenames = []
@@ -63,10 +72,11 @@ if __name__ == "__main__":
     while filenames.__len__() > 0:
         if processes.__len__() <= numProcesses:
             filename = filenames.pop()
-            pw = ProcessWorker(filename, workingDir, outputDir, logging, errorQueue)
-            p = mp.Process(target=pw.process_data, args=())
-            p.start()
-            processes.append((p, time.time(), filename))
+            if not isBrokenFile(filename, errorOutputFile):
+                pw = ProcessWorker(filename, workingDir, outputDir, logging, errorQueue, fileExtension)
+                p = mp.Process(target=pw.process_data, args=())
+                p.start()
+                processes.append((p, time.time(), filename))
         else:
             time.sleep(1)
             for process in processes:
@@ -81,6 +91,7 @@ if __name__ == "__main__":
                 else:
                     processes.remove(process)
         logging.info(u'{:.2f}% completed'.format((1 - (filenames.__len__()/float(numFiles)))*100))
+    
     for p in processes:
         p.join()
     
