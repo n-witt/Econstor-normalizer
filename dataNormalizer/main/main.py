@@ -4,21 +4,63 @@ Created on 19.11.2015
 @author: nils witt
 '''
 import multiprocessing as mp
+import threading as th
 import os
 import logging
 from processingPdfFiles.processingPdFiles import ProcessWorker
 import time
-from _socket import timeout
+import cPickle as pickle
 
-def errorHandler(q, f):
-    while True:
-        msg = q.get()
-        if msg == "terminate!":
-            break
-        fd = open(f, "a")
-        es = unicode(msg[0]) + u": " + unicode(msg[1]) + u"\n"
-        fd.write(es.encode("utf8"))
-        fd.close()
+class protocolHandler(object):
+    def __init__(self, pendingQ, updateQ):
+        pickleFile = u'../protocol.pickle'
+        workingDir = u'../data/pdf'
+        # in seconds
+        pickleInterval = 300.0
+        
+        # read pickle if exists. else create list of files
+        try:
+            with open(pickleFile, 'r') as pf:
+                protocol = pickle.load(pf)
+        except IOError:
+            # create list of all files in `workingDir`
+            if os.path.exists(workingDir):
+                # protocol keeps track of the status of the files ('pending', 'broken', 'complete'
+                protocol = {'pending': [], 'broken': [], 'complete': []}
+                docs = os.listdir(workingDir)
+                for doc in docs:
+                    protocol['pending'].append(doc) 
+            else:
+                raise Exception("working dir doesn't exist")        
+        
+        # expose list of files to main process 
+        for f in protocol['pending']:
+            pendingQ.put(f)
+            
+        
+        # handle updates to protocol
+        t = th.Thread(target=self.__handleProtocolUpdates, args=(pendingQ, updateQ)).start();
+
+        # pickle list periodically
+        while not pendingQ.empty():
+            time.sleep(pickleInterval)
+            pickle.dump(protocol, pickleFile)
+
+        t.
+        return
+        
+        
+        while True:
+            msg = q.get()
+            if msg == "terminate!":
+                break
+            fd = open(f, "a")
+            es = unicode(msg[0]) + u": " + unicode(msg[1]) + u"\n"
+            fd.write(es.encode("utf8"))
+            fd.close()
+
+    def __handleProtocolUpdates(self, pendingQ, updateQ):
+        pass
 
 def fillLists(path, numChunks):
     if os.path.exists(path):
@@ -46,26 +88,16 @@ if __name__ == "__main__":
     
     logging.getLogger().setLevel(logging.INFO)
     numProcesses = mp.cpu_count()
-    workingDir = u"../data/pdf"
     outputDir = u"../data/txts"
     errorOutputFile = u"../data/brokenPDFs"
     fileExtension = u'.json'
     processes = []
     errorQueue = mp.Queue()
     filenames = []
-    # protocol keeps track of the status of the files ('pending', 'broken', 'complete'=
-    protocol = {'pending': [], 'broken': [], 'complete': []}
     
     # the time in seconds before a worker thread is being killed
     timeout = 600.0
 
-    # create list of all files in `workingDir`
-    if os.path.exists(workingDir):
-        docs = os.listdir(workingDir)
-        for doc in docs:
-            filenames.append(doc) 
-    else:
-        raise Exception("path was not a valid path")
 
     # start errorHandling process    
     ep = mp.Process(target=errorHandler, args=(errorQueue, errorOutputFile))
