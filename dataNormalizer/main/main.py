@@ -53,6 +53,9 @@ if __name__ == "__main__":
     processes = []
     errorQueue = mp.Queue()
     filenames = []
+    # protocol keeps track of the status of the files ('pending', 'broken', 'complete'=
+    protocol = {'pending': [], 'broken': [], 'complete': []}
+    
     # the time in seconds before a worker thread is being killed
     timeout = 600.0
 
@@ -68,9 +71,9 @@ if __name__ == "__main__":
     ep = mp.Process(target=errorHandler, args=(errorQueue, errorOutputFile))
     ep.start()
     
-    numFiles = filenames.__len__()
-    while filenames.__len__() > 0:
-        if processes.__len__() <= numProcesses:
+    numFiles = len(filenames)
+    while len(filenames) > 0:
+        if len(processes) <= numProcesses:
             filename = filenames.pop()
             if not isBrokenFile(filename, errorOutputFile):
                 pw = ProcessWorker(filename, workingDir, outputDir, logging, errorQueue, fileExtension)
@@ -90,7 +93,7 @@ if __name__ == "__main__":
                         errorQueue.put((process[2], Exception(errString)))
                 else:
                     processes.remove(process)
-        logging.info(u'{:.2f}% completed'.format((1 - (filenames.__len__()/float(numFiles)))*100))
+        logging.info(u'{:.2f}% completed'.format((1 - (len(filenames)/float(numFiles)))*100))
     
     for p in processes:
         p.join()
