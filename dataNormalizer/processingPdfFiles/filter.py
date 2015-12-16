@@ -4,14 +4,16 @@ import unicodedata
 import re
 
 class Filter():
-    def __init__(self, s):
-        if os.path.exists(s):
+    def __init__(self, asFile='', asString=''):
+        if os.path.exists(asFile):
             # let's assume that s is a path
-            fd = codecs.open(s, "r", "utf8")
+            fd = codecs.open(asFile, "r", "utf8")
             self.s = fd.read()
             fd.close()
+        elif asString != '':
+            self.s = asString
         else:
-            self.s = s
+            raise IOError("file not found")
             
     def normalizeCaracters(self):
         '''
@@ -21,7 +23,7 @@ class Filter():
         return self
     
    
-    def remOneCharPerLine(self):
+    def oneCharPerLine(self):
         """
         transforms "\nF\n\O\nO" to "FOO".
         OCPL -> one character per line
@@ -31,7 +33,7 @@ class Filter():
         self.s = re.sub(r'([a-z])([A-Z0-9])', r'\1 \2', self.s)
         return self
     
-    def filterCharacters(self):
+    def uselessCharacters(self):
         """
         Lets pass only meaningful characters 
         """
@@ -46,7 +48,8 @@ class Filter():
         return self
     
     def multipleDots(self):
-        self.s = re.sub(r'(\.{2,})', ' ', self.s)
+        # removes multiple dots with optional whitespaces in between
+        self.s = re.sub(r'((\.\s*){2,})', '', self.s)
         return self
     
     def multipleSpaces(self):
@@ -56,10 +59,50 @@ class Filter():
         self.s = re.sub(r'(\s{2,})', ' ', self.s)
         return self
     
+    def lower(self):
+        # lowercases everything
+        self.s = self.s.lower()
+        return self
+    
+    def shortTokens(self):
+        # removes tokens shorter than minLen
+        self.s = re.sub(r'(?<=\s)[\w?!%,.;:\/]{1,3}(?=\s|\Z)', '', self.s)
+        return self
+        
+    def digits(self):
+        # removes all digits except digits that represent years
+        self.s = re.sub(r'\b(?!(\D\S*|[12][0-9]{3})\b)\S+\b', '', self.s)
+        return self
+    
+    def substitutions(self):
+        # there are some cases where pdf miner produces garbage that
+        # can be replaced with useful or less harmful thing.
+        
+        # replace '(cid:133)' with 'fi'.
+        self.s = re.sub(r'\(cid:133\)', 'fi', self.s)
+        
+        # remove '(cid:<some number>')
+        self.s = re.sub(r'\(cid:[0-9]*\)', '', self.s)
+        
+        # remove control characters
+        self.s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\xff]', '', self.s)
+        return self
+        
+    
     def getResult(self):
         return self.s
 
 if __name__ == "__main__":
-    f = Filter(u"../data/txts/de_726720712.pdf.txt")
-    res = f.normalizeCaracters().remOneCharPerLine().filterCharacters().multipleSpaces().multipleDots().listEnum().getResult()
+    f = Filter(u"../data/completedSamples/de_726720712.pdf.txt")
+    res = f.normalizeCaracters() \
+            .oneCharPerLine() \
+            .uselessCharacters() \
+            .digits() \
+            .multipleDots() \
+            .multipleSpaces() \
+            .listEnum() \
+            .lower() \
+            .shortWords() \
+            .getResult()
+    print res
     

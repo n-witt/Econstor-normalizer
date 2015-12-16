@@ -6,17 +6,17 @@ from  processingPdfFiles.filter import Filter
 import json
 
 class ProcessWorker():
-    def __init__(self, filename, wd, od, logger, eq, fileExtension = u'.json'):
+    def __init__(self, filename, wd, od, logger, uq, fileExtension = u'.json'):
         """
         wd    -> working dir
         od    -> output dir
-        er    -> error queue
+        uq    -> update queue
         """
         self.logger = logger
         self.filename = filename
         self.wd = wd
         self.od = od
-        self.eq = eq
+        self.uq = uq
         self.fileExtension = fileExtension
         
         self.langKey = u'lang'
@@ -44,6 +44,7 @@ class ProcessWorker():
                     # to create? if so, let's assume the file has already been
                     # processed and skip it
                     self.logger.warning(u"{} not written. Information already present. skipped".format(outFilename))
+                    self.uq.put(('complete', self.filename))
                     return
                     
             # create or update the file with the new information
@@ -51,10 +52,11 @@ class ProcessWorker():
             with open(self.od + os.sep + outFilename, "w+") as f:
                 content.update(result)
                 f.write(json.dumps(content).decode("utf8"))
+                self.uq.put(('complete', self.filename))
                 
         except Exception as e:
             self.logger.error(unicode(e))
-            self.eq.put((self.filename, e))
+            self.uq.put(('broken', self.filename, e.message))
         stop = time.time()
         self.logger.info(u"Took {:.2f}s.".format(stop-start))
         i += 1
@@ -70,14 +72,18 @@ class ProcessWorker():
         plaintext = paper.pdf2txt(textBeginning, "max")
         
         # normalize text
-        f = Filter(plaintext)
-        plaintext = f.normalizeCaracters() \
-            .remOneCharPerLine() \
-            .filterCharacters() \
-            .multipleSpaces() \
+        f = Filter(asString=plaintext)
+        plaintext = f.substitutions() \
+            .oneCharPerLine() \
+            .normalizeCaracters() \
+            .lower() \
+            .uselessCharacters() \
             .multipleDots() \
             .listEnum() \
-            .getResult()
+            .digits() \
+            .shortTokens() \
+            .multipleSpaces() \
+            .getResult()   
         
         # experience shows, that less than 6000 characters is mostly waste
         if plaintext.__len__() > 6000:

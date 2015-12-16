@@ -10,7 +10,8 @@ import urllib2
 import logging
 
 logging.getLogger().setLevel(logging.INFO)
-
+#wd = os.getcwd()
+wd = '../../data'
 
 def mkDir(dir):
     if not os.path.exists(dir):
@@ -23,10 +24,9 @@ with open("./econstore.xml", "r") as data_file:
     else:
         raise Exception("unknown Datastructure")
 # create directory if not there
-subDir = u'files'
-pdfDir = os.getcwd() + os.sep + subDir + os.sep + u'pdf'
-jsonDir = os.getcwd() + os.sep + subDir + os.sep + u'json'
-failDir = os.getcwd() + os.sep + subDir + os.sep + u'fail'
+pdfDir = wd + os.sep +  u'pdf'
+jsonDir = wd  + os.sep + u'json'
+failDir = wd + os.sep + os.sep + u'fail'
 for f in (pdfDir, jsonDir, failDir):
     mkDir(f)
     
@@ -46,7 +46,7 @@ for item in data:
         else:
             logging.log(logging.INFO, filename + " skipped. already downloaded.")        
     
-    except Exception, e:
+    except Exception as e:
         logging.log(logging.INFO, url + " couldn't be opened.") 
         failedDownloads.append(item)
         print e
