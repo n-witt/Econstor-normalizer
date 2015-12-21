@@ -1,8 +1,8 @@
 import time
 import os
-from processingPdfFiles.pdfTools.pdfLib import PdfLib
+from pdfLib import PdfLib
 import langdetect
-from  processingPdfFiles.filter import Filter
+from filter import Filter
 import json
 
 class ProcessWorker():

@@ -1,6 +1,6 @@
-data
+dataNormalizer/data
 *.pyc
 *.swp
 *.project
 *.pydevproject
-*__init__.py
+*.ipynb_checkpoints/

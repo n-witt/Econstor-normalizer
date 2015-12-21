@@ -1,22 +1,13 @@
-'''
-Created on 19.11.2015
-
-@author: nils witt
-'''
-import multiprocessing as mp
 import threading
 import os
-import logging
-from processingPdfFiles.processingPdFiles import ProcessWorker
 import time
-# import pickle as pickle
-import pickle as pickle
+import pickle
 
 class journalHandler(object):
-    def __init__(self, pendingQ, updateQ, waitForResume, workingDir):
+    def __init__(self, pendingQ, updateQ, waitForResume, workingDir, logging, dataDir):
         # restricts access to the journal object. this is crucial for pickling
         self.journalLock = threading.Lock()
-        pickleFile = u'../data/journal.pickle'
+        pickleFile = dataDir + os.sep + 'journal.pickle'
         # in seconds
         pickleInterval = 30.0
         
@@ -95,66 +86,3 @@ class journalHandler(object):
             if item == 'terminate':
                 break
             yield item
-
-def fillLists(path, numChunks):
-    if os.path.exists(path):
-        docs = os.listdir(path)
-        l = []
-        lol = []
-        for doc in docs:
-            l.append(doc) 
-        for i in range(numChunks):
-            lol.append(l[i::numChunks])
-        
-        return lol
-    else:
-        raise Exception("path was not a valid path")
-    
-if __name__ == "__main__":
-    
-    logging.getLogger().setLevel(logging.INFO)
-    numProcesses = mp.cpu_count()
-    workingDir = u'../data/pdf'
-    outputDir = u"../data/json"
-    fileExtension = u'.json'
-    processes = []
-    pendingQ = mp.Queue()
-    updateQ = mp.Queue()
-    waitForResume = mp.Queue()
-    
-    # the time in seconds before a worker thread is being killed
-    timeout = 600.0
-
-    # start errorHandling process    
-    ep = mp.Process(target=journalHandler, args=(pendingQ, updateQ, waitForResume, workingDir))
-    ep.start()
-    
-    # block until journalHandler has initialized the 'pending' list
-    waitForResume.get()
-    
-    numFiles = pendingQ.qsize()
-    print pendingQ.empty()
-    while not pendingQ.empty():
-        if len(processes) <= numProcesses:
-            filename = pendingQ.get()
-            pw = ProcessWorker(filename, workingDir, outputDir, logging, updateQ, fileExtension)
-            p = mp.Process(target=pw.process_data, args=())
-            p.start()
-            processes.append((p, time.time(), filename))
-        else:
-            time.sleep(1)
-            for process in processes:
-                if process[0].is_alive():
-                    now = time.time()
-                    if now - process[1] > timeout:
-                        process[0].terminate()
-                        processes.remove(process)
-                        errString = u'{} ran into timeout'.format(process[2])
-                        logging.info(errString)
-                        updateQ.put(('broken', process[2], errString))
-                else:
-                    processes.remove(process)
-        #logging.info(u'{:.2f}% completed'.format((1 - (pendingQ.qsize()/float(numFiles)))*100))
-    
-    for p in processes:
-        p.join()
