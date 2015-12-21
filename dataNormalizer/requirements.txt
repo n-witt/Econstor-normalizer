@@ -1,0 +1,2 @@
+langdetect>=1.0.5
+pdfminer>=20140328
