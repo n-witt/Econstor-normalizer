@@ -4,7 +4,9 @@ import time
 import pickle
 
 class journalHandler(object):
+        
     def __init__(self, pendingQ, updateQ, waitForResume, workingDir, logging, dataDir):
+        self.logging = logging
         # restricts access to the journal object. this is crucial for pickling
         self.journalLock = threading.Lock()
         pickleFile = dataDir + os.sep + 'journal.pickle'
@@ -48,7 +50,7 @@ class journalHandler(object):
                 with open(pickleFile, "wb") as f:
                     pickle.dump(journal, f)
             numDocuments = len(journal['complete']) + len(journal['broken']) + len(journal['pending'])
-            logging.info("\n\n### STATUS ###\njournal pickled. stats:\ncomplete: {}\nbroken: {}\npending: {}\nsum: {}\ncomplete: {:.2f}%\n".format( \
+            self.logging.info("\n\n### STATUS ###\njournal pickled. stats:\ncomplete: {}\nbroken: {}\npending: {}\nsum: {}\ncomplete: {:.2f}%\n".format( \
                 len(journal['complete']), \
                 len(journal['broken']), \
                 len(journal['pending']), \
@@ -78,7 +80,7 @@ class journalHandler(object):
                     # insert into 'broken' list and store error msg
                     journal['broken'][item[1]] = item[2]
                 else:
-                    logging.error("invalid journal message received")
+                    self.logging.error("invalid journal message received")
 
     def __getItem(self, updateQ):
         while True:

@@ -4,6 +4,8 @@ from pdfLib import PdfLib
 import langdetect
 from filter import Filter
 import json
+from googleScholar import *
+from fuzzywuzzy import fuzz
 
 class ProcessWorker():
     def __init__(self, filename, wd, od, logger, uq, fileExtension = u'.json'):
@@ -18,6 +20,7 @@ class ProcessWorker():
         self.od = od
         self.uq = uq
         self.fileExtension = fileExtension
+        self.outFilename = self.filename + self.fileExtension
         
         self.langKey = u'lang'
         self.plaintextKey = u'plaintext'
@@ -32,25 +35,24 @@ class ProcessWorker():
         start = time.time()
         content = {}
         try:
-            outFilename = self.filename + self.fileExtension 
-            if os.path.exists(self.od + os.sep + outFilename):
-                with open(self.od + os.sep + outFilename, "r") as f:
-                    content = json.loads(f.read())
-                
-                if content.has_key(self.plaintextKey) and \
-                    content.has_key(self.langKey) and \
-                    content.has_key(self.filenameKey):
-                    # does the file already have all the properties we want 
-                    # to create? if so, let's assume the file has already been
-                    # processed and skip it
-                    self.logger.warning(u"{} not written. Information already present. skipped".format(outFilename))
-                    self.uq.put(('complete', self.filename))
-                    return
-                    
+            content = self.__loadFile()
+
+            if content.has_key(self.plaintextKey) and \
+            content.has_key(self.langKey) and \
+            content.has_key(self.filenameKey):
+                # does the file already have all the properties we want 
+                # to create? if so, let's assume the file has already been
+                # processed and skip it
+                self.logger.warning(u"{} not written. Information already present. skipped".format(self.outFilename))
+                self.uq.put(('complete', self.filename))
+                return
+
             # create or update the file with the new information
             result = self.__getPlaintext()
-            with open(self.od + os.sep + outFilename, "w+") as f:
+            citationCount = self.__getCitationCount()
+            with open(self.od + os.sep + self.outFilename, "w+") as f:
                 content.update(result)
+                content['citationCount'] = citationCount
                 f.write(json.dumps(content).decode("utf8"))
                 self.uq.put(('complete', self.filename))
                 
@@ -86,7 +88,7 @@ class ProcessWorker():
             .getResult()   
         
         # experience shows, that less than 6000 characters is mostly waste
-        if plaintext.__len__() > 6000:
+        if len(plaintext) > 6000:
             result = {}
             result[self.langKey] = self.__guessLang(plaintext)
             result[self.plaintextKey] = plaintext
@@ -123,3 +125,50 @@ class ProcessWorker():
         
     def __guessLang(self, text):
         return langdetect.detect(text)
+    
+    def __loadFile(self):
+        with open(self.od + os.sep + self.outFilename, "r") as f:
+            return json.loads(f.read())
+    
+    def __getCitationCount(self, sep="|"):
+        content = self.__loadFile()
+        
+        # <initializing googleScholar.py>
+        querier = ScholarQuerier()
+        settings = ScholarSettings()
+        querier.apply_settings(settings)
+        query = SearchScholarQuery()
+        # this is the actual query text
+        query.set_words(content['title'])
+        # search for title only
+        query.set_scope(True)
+        querier.send_query(query)
+        # </initializing googleScholar.py>
+        
+        result = csv(querier, header=True, sep=sep) # result[0] first row (headlines), result[1] second row (first data row), ...
+        if result == None:
+            self.logger.info(u"#### zero citations ####")
+            return 0
+        
+        # csv to list of dicts like:
+        # [{'title': 'Highway to Hitler', ....}, {'title': '<some other title>'}]
+        intermediate = [a.split(sep) for a in result.split("\n")]
+        final = [{intermediate[0][i]: w  for i, w in enumerate(t)} \
+                 for t in intermediate[1:]]
+        
+        # count citations
+        citations = 0
+        for d in final:
+            # only count if titles are sufficiently similar
+            # see https://github.com/seatgeek/fuzzywuzzy for details 
+            if fuzz.token_set_ratio(d['title'], content['title']) >= 85:
+                if d.has_key('num_citations'):
+                    if type(d['num_citations']) == int:
+                        citations += d['num_citations']
+                    elif type(d['num_citations']) == unicode or type(d['num_citations']) == str:
+                        try:
+                            citations += int(d['num_citations'])
+                        except ValueError:
+                            pass
+        return citations
+                
