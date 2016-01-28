@@ -49,10 +49,8 @@ class ProcessWorker():
 
             # create or update the file with the new information
             result = self.__getPlaintext()
-            citationCount = self.__getCitationCount()
             with open(self.od + os.sep + self.outFilename, "w+") as f:
                 content.update(result)
-                content['citationCount'] = citationCount
                 f.write(json.dumps(content).decode("utf8"))
                 self.uq.put(('complete', self.filename))
                 
@@ -129,46 +127,3 @@ class ProcessWorker():
     def __loadFile(self):
         with open(self.od + os.sep + self.outFilename, "r") as f:
             return json.loads(f.read())
-    
-    def __getCitationCount(self, sep="|"):
-        content = self.__loadFile()
-        
-        # <initializing googleScholar.py>
-        querier = ScholarQuerier()
-        settings = ScholarSettings()
-        querier.apply_settings(settings)
-        query = SearchScholarQuery()
-        # this is the actual query text
-        query.set_words(content['title'])
-        # search for title only
-        query.set_scope(True)
-        querier.send_query(query)
-        # </initializing googleScholar.py>
-        
-        result = csv(querier, header=True, sep=sep) # result[0] first row (headlines), result[1] second row (first data row), ...
-        if result == None:
-            self.logger.info(u"#### zero citations ####")
-            return 0
-        
-        # csv to list of dicts like:
-        # [{'title': 'Highway to Hitler', ....}, {'title': '<some other title>'}]
-        intermediate = [a.split(sep) for a in result.split("\n")]
-        final = [{intermediate[0][i]: w  for i, w in enumerate(t)} \
-                 for t in intermediate[1:]]
-        
-        # count citations
-        citations = 0
-        for d in final:
-            # only count if titles are sufficiently similar
-            # see https://github.com/seatgeek/fuzzywuzzy for details 
-            if fuzz.token_set_ratio(d['title'], content['title']) >= 85:
-                if d.has_key('num_citations'):
-                    if type(d['num_citations']) == int:
-                        citations += d['num_citations']
-                    elif type(d['num_citations']) == unicode or type(d['num_citations']) == str:
-                        try:
-                            citations += int(d['num_citations'])
-                        except ValueError:
-                            pass
-        return citations
-                
