@@ -1,6 +1,6 @@
 # Han the Converter
 
-Based on the file structure created by _Luke the Downloader_, _Han the Coverter_ extracts the plaintext from the PDF files in the `data/pdf` subdirectory and writes that text into the `plaintext` attribute of the corresponding JSON file. Moreover, does it [_guess_](https://pypi.python.org/pypi/langdetect/1.0.1) the language of the document and adds this information as well under the `lang` attribute.
+Based on the file structure created by [_Luke the Downloader_](../Luke_the_Downloader/EconstorDownloader.ipynb), _Han the Coverter_ extracts the plaintext from the PDF files in the `data/pdf` subdirectory and writes that text into the `plaintext` attribute of the corresponding JSON file. Moreover, does it [_guess_](https://pypi.python.org/pypi/langdetect/1.0.1) the language of the document and adds this information as well under the `lang` attribute.
 
 ## Time, multiprocessing and ressources
 
