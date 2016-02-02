@@ -6,7 +6,6 @@ from journalHandler import journalHandler
 import time
 
 if __name__ == "__main__":
-    
     logging.getLogger().setLevel(logging.INFO)
     numProcesses = mp.cpu_count()
     dataDir = '../data'

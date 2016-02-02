@@ -3,6 +3,7 @@ import os
 import time
 import pickle
 
+
 class journalHandler(object):
         
     def __init__(self, pendingQ, updateQ, waitForResume, workingDir, logging, dataDir):
@@ -18,6 +19,9 @@ class journalHandler(object):
             with open(pickleFile, 'r') as pf:
                 with self.journalLock:
                     journal = pickle.load(pf)
+                    newFiles = self._updateJournal(journal, workingDir)
+                    newFiles = {f: '' for f in newFiles}
+                    journal["pending"].update(newFiles) 
         except IOError:
             # create list of all files in `workingDir`
             if os.path.exists(workingDir):
@@ -66,6 +70,19 @@ class journalHandler(object):
         updateQ.put(('terminate'))
         t.join(10)
         return
+   
+    def _updateJournal(self, journal, workingDir):
+        '''
+        find files that are not contained in the journal and return them
+        '''
+        docs = os.listdir(workingDir)
+        oldList = set()
+        for l in journal.itervalues():
+            for item in l.keys():
+                oldList.add(item + '.json')
+
+        newList = set(docs) - oldList
+        return list(newList)
     
     def __handlejournalUpdates(self, journal, updateQ):
         for item in self.__getItem(updateQ):
