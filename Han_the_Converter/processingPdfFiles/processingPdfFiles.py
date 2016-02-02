@@ -4,7 +4,6 @@ from pdfLib import PdfLib
 import langdetect
 from filter import Filter
 import json
-from googleScholar import *
 from fuzzywuzzy import fuzz
 
 class ProcessWorker():
