@@ -1,0 +1,5 @@
+pdfminer
+langdetect
+BeautifulSoup
+fuzzywuzzy
+python-Levenshtein
