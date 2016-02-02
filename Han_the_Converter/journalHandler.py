@@ -27,6 +27,7 @@ class journalHandler(object):
                 docs = os.listdir(workingDir)
                 for doc in docs:
                     with self.journalLock:
+                        doc = doc.replace('.json','')
                         journal['pending'][doc] = '' 
             else:
                 raise Exception("working dir doesn't exist")        

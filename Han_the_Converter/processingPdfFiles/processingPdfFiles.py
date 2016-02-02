@@ -4,8 +4,6 @@ from pdfLib import PdfLib
 import langdetect
 from filter import Filter
 import json
-from googleScholar import *
-from fuzzywuzzy import fuzz
 
 class ProcessWorker():
     def __init__(self, filename, wd, od, logger, uq, fileExtension = u'.json'):

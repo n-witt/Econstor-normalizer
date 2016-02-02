@@ -28,7 +28,7 @@ class Filter():
         transforms "\nF\n\O\nO" to "FOO".
         OCPL -> one character per line
         """
-        self.s = "".join(self.s.split("\n"))
+        self.s = " ".join(self.s.split("\n"))
         # "fooBar" -> "foo Bar"
         self.s = re.sub(r'([a-z])([A-Z0-9])', r'\1 \2', self.s)
         return self
@@ -60,7 +60,7 @@ class Filter():
         return self
     
     def lower(self):
-        # lowercases everything
+        # lower cases everything
         self.s = self.s.lower()
         return self
     
@@ -102,7 +102,7 @@ if __name__ == "__main__":
             .multipleSpaces() \
             .listEnum() \
             .lower() \
-            .shortWords() \
+            .shortTokens() \
             .getResult()
     print res
     
