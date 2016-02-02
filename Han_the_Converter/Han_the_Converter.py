@@ -21,7 +21,7 @@ if __name__ == "__main__":
     timeout = 600.0
 
     # start errorHandling process    
-    jh = mp.Process(target=journalHandler, args=(pendingQ, updateQ, waitForResume, outputDir, logging, dataDir))
+    jh = mp.Process(target=journalHandler, args=(pendingQ, updateQ, waitForResume, workingDir, logging, dataDir))
     jh.start()
     
     # block until journalHandler has initialized the 'pending' list

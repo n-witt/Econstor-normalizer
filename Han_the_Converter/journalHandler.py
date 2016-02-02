@@ -79,7 +79,7 @@ class journalHandler(object):
         oldList = set()
         for l in journal.itervalues():
             for item in l.keys():
-                oldList.add(item + '.json')
+                oldList.add(item)
 
         newList = set(docs) - oldList
         return list(newList)
